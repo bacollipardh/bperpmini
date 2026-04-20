@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Kosovo ERP Suite
 
 Enterprise-grade ERP for Kosovo businesses — purchase invoices, sales invoices, sales returns, stock management, and full audit logging, with a clean Next.js admin panel backed by NestJS and PostgreSQL.
@@ -223,3 +224,6 @@ Covers: auth login, wrong password, unknown user, stock sufficiency check, avg c
 - Profit/loss and sales analytics reporting
 - Refresh token rotation
 - CI/CD pipeline
+=======
+# bperpmini
+>>>>>>> 7dc58d194eb968ca60af41fd7470701fb3edc86c
