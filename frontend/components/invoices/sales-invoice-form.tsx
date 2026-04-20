@@ -1,0 +1,177 @@
+'use client';
+
+import { FormEvent, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
+import { SelectInput } from '@/components/crud/select-input';
+import { TextInput } from '@/components/crud/text-input';
+import { TextareaInput } from '@/components/crud/textarea-input';
+import { FormActions } from '@/components/crud/form-actions';
+import { InvoiceLineModel, InvoiceLinesEditor } from './invoice-lines-editor';
+import { DocumentTotals } from './document-totals';
+import { ConfirmButton } from '@/components/confirm-button';
+
+function calcTotals(lines: InvoiceLineModel[]) {
+  const normalized = lines.map((line) => {
+    const grossBase = Number(line.qty) * Number(line.unitPrice);
+    const disc = grossBase * (Number(line.discountPercent ?? 0) / 100);
+    const netAmount = grossBase - disc;
+    const taxAmount = netAmount * (Number(line.taxPercent) / 100);
+    const grossAmount = netAmount + taxAmount;
+    return { discountAmount: disc, netAmount, taxAmount, grossAmount };
+  });
+
+  return {
+    subtotal: normalized.reduce((a, b) => a + b.netAmount, 0),
+    discountTotal: normalized.reduce((a, b) => a + b.discountAmount, 0),
+    taxTotal: normalized.reduce((a, b) => a + b.taxAmount, 0),
+    grandTotal: normalized.reduce((a, b) => a + b.grossAmount, 0),
+  };
+}
+
+export function SalesInvoiceForm({
+  mode,
+  data,
+  series,
+  customers,
+  warehouses,
+  paymentMethods,
+  items,
+}: {
+  mode: 'create' | 'edit';
+  data?: any;
+  series: any[];
+  customers: any[];
+  warehouses: any[];
+  paymentMethods: any[];
+  items: any[];
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    seriesId: data?.seriesId ?? '',
+    customerId: data?.customerId ?? '',
+    warehouseId: data?.warehouseId ?? '',
+    paymentMethodId: data?.paymentMethodId ?? '',
+    docDate: data?.docDate ? String(data.docDate).slice(0, 10) : new Date().toISOString().slice(0, 10),
+    notes: data?.notes ?? '',
+  });
+
+  const [lines, setLines] = useState<InvoiceLineModel[]>(
+    data?.lines?.length
+      ? data.lines.map((line: any) => ({
+          itemId: line.itemId ?? '',
+          qty: Number(line.qty),
+          unitPrice: Number(line.unitPrice),
+          discountPercent: Number(line.discountPercent ?? 0),
+          taxPercent: Number(line.taxPercent),
+        }))
+      : [{ itemId: '', qty: 1, unitPrice: 0, discountPercent: 0, taxPercent: 0 }],
+  );
+
+  const totals = useMemo(() => calcTotals(lines), [lines]);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    const emptyLine = lines.findIndex((l) => !l.itemId);
+    if (emptyLine !== -1) {
+      setApiError(`Line ${emptyLine + 1}: please select an item.`);
+      return;
+    }
+    setBusy(true);
+    setApiError(null);
+
+    const payload = {
+      ...form,
+      lines: lines.map(({ itemId, qty, unitPrice, discountPercent, taxPercent }) => ({
+        itemId,
+        qty,
+        unitPrice,
+        discountPercent: discountPercent ?? 0,
+        taxPercent,
+      })),
+    };
+
+    try {
+      if (mode === 'create') {
+        await api.create('sales-invoices', payload);
+      } else {
+        await api.update('sales-invoices', data.id, payload);
+      }
+      router.push('/sales-invoices');
+      router.refresh();
+    } catch (err: any) {
+      try { setApiError(JSON.parse(err.message).message ?? err.message); }
+      catch { setApiError(err.message ?? 'An error occurred'); }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onPost() {
+    setApiError(null);
+    try {
+      await api.postDocument('sales-invoices', data.id);
+      router.refresh();
+    } catch (err: any) {
+      try { setApiError(JSON.parse(err.message).message ?? err.message); }
+      catch { setApiError(err.message ?? 'An error occurred'); }
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-6">
+      {apiError && (
+        <div className="rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">{apiError}</div>
+      )}
+
+      {/* Header */}
+      <div className="rounded-2xl border bg-white p-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div>
+            <SelectInput
+              label="Doc Series (numbering)"
+              value={form.seriesId}
+              onChange={(value) => setForm({ ...form, seriesId: value })}
+              options={series.map((x) => ({ value: x.id, label: `${x.prefix} — next: ${x.nextNumber}` }))}
+            />
+            <p className="text-xs text-slate-400 mt-1">Defines the document number format (e.g. SI-2025/0001)</p>
+          </div>
+          <SelectInput label="Customer" value={form.customerId} onChange={(value) => setForm({ ...form, customerId: value })} options={customers.map((x) => ({ value: x.id, label: x.name }))} />
+          <SelectInput label="Warehouse" value={form.warehouseId} onChange={(value) => setForm({ ...form, warehouseId: value })} options={warehouses.map((x) => ({ value: x.id, label: x.name }))} />
+          <SelectInput label="Payment Method" value={form.paymentMethodId} onChange={(value) => setForm({ ...form, paymentMethodId: value })} options={paymentMethods.map((x) => ({ value: x.id, label: x.name }))} />
+          <TextInput label="Document Date" type="date" value={form.docDate} onChange={(e) => setForm({ ...form, docDate: e.target.value })} />
+        </div>
+        <TextareaInput label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+      </div>
+
+      {/* Lines */}
+      <div className="rounded-2xl border bg-white p-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-base font-semibold">Invoice Lines</div>
+          <div className="text-xs text-slate-400">Price and tax are auto-filled from item master data</div>
+        </div>
+        <InvoiceLinesEditor
+          lines={lines}
+          setLines={setLines}
+          items={items}
+          withDiscount
+          priceField="standardSalesPrice"
+        />
+      </div>
+
+      <DocumentTotals {...totals} />
+
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          {mode === 'edit' && data?.status === 'DRAFT' ? (
+            <ConfirmButton label="Post Document" confirmText="Post this sales invoice?" onClick={onPost} className="rounded-xl bg-emerald-600 text-white px-4 py-2 text-sm font-medium" />
+          ) : null}
+        </div>
+        <FormActions submitLabel={mode === 'create' ? 'Create Sales Invoice' : 'Update Sales Invoice'} busy={busy} />
+      </div>
+    </form>
+  );
+}

@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { PdfService } from './pdf.service';
+import { PdfController } from './pdf.controller';
+import { PurchaseInvoicesModule } from '../purchase-invoices/purchase-invoices.module';
+import { SalesInvoicesModule } from '../sales-invoices/sales-invoices.module';
+import { SalesReturnsModule } from '../sales-returns/sales-returns.module';
+
+@Module({
+  imports: [PurchaseInvoicesModule, SalesInvoicesModule, SalesReturnsModule],
+  controllers: [PdfController],
+  providers: [PdfService],
+})
+export class PdfModule {}

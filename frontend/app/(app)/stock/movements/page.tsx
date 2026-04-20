@@ -1,0 +1,26 @@
+import { PageHeader } from '@/components/page-header';
+import { DataTable } from '@/components/data-table';
+import { StatusBadge } from '@/components/status-badge';
+import { api } from '@/lib/api';
+
+export default async function StockMovementsPage() {
+  const movements = await api.list('stock/movements');
+
+  return (
+    <div>
+      <PageHeader title="Stock Movements" description="Historiku i plotë i lëvizjeve të stokut." />
+      <DataTable
+        data={movements}
+        columns={[
+          { key: 'warehouse', title: 'Warehouse', render: (row: any) => row.warehouse?.name ?? '-' },
+          { key: 'item', title: 'Item', render: (row: any) => row.item?.name ?? '-' },
+          { key: 'movementType', title: 'Type', render: (row: any) => <StatusBadge value={row.movementType} /> },
+          { key: 'qtyIn', title: 'Qty In', render: (row: any) => row.qtyIn },
+          { key: 'qtyOut', title: 'Qty Out', render: (row: any) => row.qtyOut },
+          { key: 'referenceNo', title: 'Reference', render: (row: any) => row.referenceNo ?? '-' },
+          { key: 'movementAt', title: 'Movement At', render: (row: any) => new Date(row.movementAt).toLocaleString() },
+        ]}
+      />
+    </div>
+  );
+}

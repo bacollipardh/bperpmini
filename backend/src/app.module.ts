@@ -1,0 +1,47 @@
+import { Module } from '@nestjs/common';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { HealthModule } from './health/health.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { RolesModule } from './roles/roles.module';
+import { UsersModule } from './users/users.module';
+import { ItemCategoriesModule } from './item-categories/item-categories.module';
+import { UnitsModule } from './units/units.module';
+import { TaxRatesModule } from './tax-rates/tax-rates.module';
+import { WarehousesModule } from './warehouses/warehouses.module';
+import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
+import { DocumentSeriesModule } from './document-series/document-series.module';
+import { ItemsModule } from './items/items.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { CustomersModule } from './customers/customers.module';
+import { StockModule } from './stock/stock.module';
+import { PurchaseInvoicesModule } from './purchase-invoices/purchase-invoices.module';
+import { SalesInvoicesModule } from './sales-invoices/sales-invoices.module';
+import { SalesReturnsModule } from './sales-returns/sales-returns.module';
+import { PdfModule } from './pdf/pdf.module';
+
+@Module({
+  imports: [
+    PrismaModule,
+    AuthModule,
+    HealthModule,
+    AuditLogsModule,
+    RolesModule,
+    UsersModule,
+    ItemCategoriesModule,
+    UnitsModule,
+    TaxRatesModule,
+    WarehousesModule,
+    PaymentMethodsModule,
+    DocumentSeriesModule,
+    ItemsModule,
+    SuppliersModule,
+    CustomersModule,
+    StockModule,
+    PurchaseInvoicesModule,
+    SalesInvoicesModule,
+    SalesReturnsModule,
+    PdfModule,
+  ],
+})
+export class AppModule {}
