@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { API_BASE_URL } from '@/lib/constants';
 import { PdfButtons } from '@/components/invoices/pdf-download-button';
 import Link from 'next/link';
 
@@ -13,9 +14,9 @@ function formatDate(iso: string) {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    DRAFT:    { label: 'Draft',    cls: 'bg-slate-100 text-slate-600' },
-    POSTED:   { label: 'Postuar',  cls: 'bg-emerald-100 text-emerald-700' },
-    CANCELLED:{ label: 'Anuluar',  cls: 'bg-red-100 text-red-600' },
+    DRAFT:    { label: 'Draft',   cls: 'bg-slate-100 text-slate-600' },
+    POSTED:   { label: 'Postuar', cls: 'bg-emerald-100 text-emerald-700' },
+    CANCELLED:{ label: 'Anuluar', cls: 'bg-red-100 text-red-600' },
   };
   const s = map[status] ?? { label: status, cls: 'bg-slate-100 text-slate-600' };
   return (
@@ -28,9 +29,9 @@ function StatusBadge({ status }: { status: string }) {
 export default async function SalesHistoryPage() {
   const invoices: any[] = await api.list('sales-invoices');
 
-  // Sort newest first
   const sorted = [...invoices].sort(
-    (a, b) => new Date(b.createdAt ?? b.date ?? 0).getTime() - new Date(a.createdAt ?? a.date ?? 0).getTime()
+    (a, b) => new Date(b.createdAt ?? b.docDate ?? 0).getTime()
+            - new Date(a.createdAt ?? a.docDate ?? 0).getTime()
   );
 
   return (
@@ -68,7 +69,7 @@ export default async function SalesHistoryPage() {
                   <th className="px-4 py-3">Data</th>
                   <th className="px-4 py-3">Klienti</th>
                   <th className="px-4 py-3">Magazina</th>
-                  <th className="px-4 py-3 text-right">Totali</th>
+                  <th className="px-4 py-3 text-right">Neto</th>
                   <th className="px-4 py-3 text-right">TVSH</th>
                   <th className="px-4 py-3 text-right">Bruto</th>
                   <th className="px-4 py-3">Statusi</th>
@@ -79,33 +80,33 @@ export default async function SalesHistoryPage() {
                 {sorted.map((inv: any) => (
                   <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 font-mono font-medium text-slate-800">
-                      {inv.documentNumber ?? inv.docNumber ?? '—'}
+                      {inv.docNo ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
-                      {formatDate(inv.date ?? inv.createdAt)}
+                      {formatDate(inv.docDate ?? inv.createdAt)}
                     </td>
                     <td className="px-4 py-3 text-slate-700">
-                      {inv.customer?.name ?? inv.customerName ?? '—'}
+                      {inv.customer?.name ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {inv.warehouse?.name ?? inv.warehouseName ?? '—'}
+                      {inv.warehouse?.name ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-slate-700">
-                      {Number(inv.totalNet ?? 0).toFixed(2)}
+                      {Number(inv.subtotal ?? 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-slate-500">
-                      {Number(inv.totalTax ?? 0).toFixed(2)}
+                      {Number(inv.taxTotal ?? 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold text-slate-900">
-                      {Number(inv.totalGross ?? 0).toFixed(2)}
+                      {Number(inv.grandTotal ?? 0).toFixed(2)}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={inv.status ?? 'DRAFT'} />
                     </td>
                     <td className="px-4 py-3">
                       <PdfButtons
-                        baseHref={`/api/pdf/sales-invoices/${inv.id}`}
-                        docNo={inv.documentNumber ?? inv.docNumber ?? `inv-${inv.id}`}
+                        baseHref={`${API_BASE_URL}/pdf/sales-invoices/${inv.id}`}
+                        docNo={inv.docNo ?? `inv-${inv.id}`}
                       />
                     </td>
                   </tr>

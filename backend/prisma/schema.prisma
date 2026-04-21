@@ -446,6 +446,25 @@ model StockBalance {
   @@map("stock_balances")
 }
 
+model CompanyProfile {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(200)
+  fiscalNo    String?  @map("fiscal_no") @db.VarChar(50)
+  vatNo       String?  @map("vat_no") @db.VarChar(50)
+  businessNo  String?  @map("business_no") @db.VarChar(50)
+  address     String?  @db.VarChar(255)
+  city        String?  @db.VarChar(100)
+  phone       String?  @db.VarChar(50)
+  email       String?  @db.VarChar(150)
+  website     String?  @db.VarChar(200)
+  bankName    String?  @map("bank_name") @db.VarChar(100)
+  bankAccount String?  @map("bank_account") @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("company_profile")
+}
+
 model AuditLog {
   id         String   @id @default(uuid()) @db.Uuid
   userId     String?  @map("user_id") @db.Uuid

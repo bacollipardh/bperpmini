@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { CompanyProfileService } from '../company-profile/company-profile.service';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const PDFDocument = require('pdfkit') as any;
@@ -20,6 +21,12 @@ const CW      = PAGE_W - 2 * MARGIN; // 515
 
 @Injectable()
 export class PdfService {
+  constructor(private readonly companyProfileService: CompanyProfileService) {}
+
+  private async getCompany() {
+    const cp = await this.companyProfileService.get();
+    return cp ?? { name: 'bp ERP System' };
+  }
 
   private buildDoc(): any {
     return new PDFDocument({ margin: 0, size: 'A4' });
@@ -36,7 +43,7 @@ export class PdfService {
   }
 
   // ── Header band ────────────────────────────────────────────────────────────
-  private drawHeader(doc: any, docType: string, docNo: string, docDate: string, status: string): number {
+  private drawHeader(doc: any, docType: string, docNo: string, docDate: string, status: string, companyName = 'bp ERP System'): number {
     const H = 78;
 
     // Background
@@ -46,7 +53,7 @@ export class PdfService {
 
     // Left: company + doc type
     doc.fillColor('#94a3b8').fontSize(7.5).font('Helvetica')
-       .text('bp ERP System', MARGIN, 13);
+       .text(companyName.slice(0, 50), MARGIN, 13);
     doc.fillColor(WHITE).fontSize(17).font('Helvetica-Bold')
        .text(docType, MARGIN, 26);
 
@@ -90,13 +97,14 @@ export class PdfService {
     ly += 12;
     doc.font('Helvetica').fontSize(7.5).fillColor(SLATE500);
     for (const field of [
-      left.entity.fiscalNo ? `Nr. Fiskal: ${left.entity.fiscalNo}` : null,
-      left.entity.vatNo    ? `Nr. TVSH: ${left.entity.vatNo}`      : null,
-      left.entity.address  ? left.entity.address                   : null,
-      left.entity.city     ? left.entity.city                      : null,
+      left.entity.fiscalNo  ? `Nr. Fiskal: ${left.entity.fiscalNo}`   : null,
+      left.entity.vatNo     ? `Nr. TVSH: ${left.entity.vatNo}`         : null,
+      left.entity.extraLine ? left.entity.extraLine                    : null,
+      left.entity.address   ? left.entity.address                      : null,
+      left.entity.city      ? left.entity.city                         : null,
     ]) {
       if (field && ly < startY + H - 5) {
-        doc.text(field.slice(0, 40), lx + 10, ly);
+        doc.text(String(field).slice(0, 40), lx + 10, ly);
         ly += 10;
       }
     }
@@ -247,9 +255,10 @@ export class PdfService {
   // PURCHASE INVOICE
   // ═══════════════════════════════════════════════════════════════════════════
   async generatePurchaseInvoicePdf(invoice: any): Promise<Buffer> {
+    const company = await this.getCompany();
     const doc = this.buildDoc();
 
-    let y = this.drawHeader(doc, 'FATURË BLERJEJE', invoice.docNo, invoice.docDate, invoice.status);
+    let y = this.drawHeader(doc, 'FATURË BLERJEJE', invoice.docNo, invoice.docDate, invoice.status, company.name);
 
     if (invoice.supplierInvoiceNo) {
       doc.fillColor(SLATE500).fontSize(7.5).font('Helvetica')
@@ -259,7 +268,16 @@ export class PdfService {
 
     y = this.drawParty(doc, y,
       { label: 'Furnitori', entity: invoice.supplier ?? {} },
-      { label: 'Magazina', lines: [invoice.warehouse?.name ?? '-'] },
+      {
+        label: 'Blerësi (Kompania)',
+        lines: [
+          company.name,
+          (company as any).fiscalNo  ? `Nr. Fiskal: ${(company as any).fiscalNo}`   : '',
+          (company as any).vatNo     ? `Nr. TVSH: ${(company as any).vatNo}`         : '',
+          (company as any).businessNo? `Nr. Biznesit: ${(company as any).businessNo}`: '',
+          (company as any).address   ? (company as any).address                      : '',
+        ].filter(Boolean),
+      },
     );
 
     // Columns (total must = CW = 515)
@@ -311,18 +329,33 @@ export class PdfService {
   // SALES INVOICE
   // ═══════════════════════════════════════════════════════════════════════════
   async generateSalesInvoicePdf(invoice: any): Promise<Buffer> {
+    const company = await this.getCompany();
     const doc = this.buildDoc();
 
-    let y = this.drawHeader(doc, 'FATURË SHITJEJE', invoice.docNo, invoice.docDate, invoice.status);
+    let y = this.drawHeader(doc, 'FATURË SHITJEJE', invoice.docNo, invoice.docDate, invoice.status, company.name);
 
+    // LEFT = Our company (seller), RIGHT = Customer (buyer)
     y = this.drawParty(doc, y,
-      { label: 'Klienti', entity: invoice.customer ?? {} },
       {
-        label: 'Detajet',
+        label: 'Shitësi',
+        entity: {
+          name:       company.name,
+          fiscalNo:   (company as any).fiscalNo,
+          vatNo:      (company as any).vatNo,
+          address:    (company as any).address,
+          city:       (company as any).city,
+          extraLine:  (company as any).businessNo ? `Nr. Biznesit: ${(company as any).businessNo}` : undefined,
+        },
+      },
+      {
+        label: 'Blerësi',
         lines: [
-          invoice.warehouse?.name ? `Magazina: ${invoice.warehouse.name}` : '',
-          invoice.paymentMethod?.name ? `Pagesa: ${invoice.paymentMethod.name}` : '',
-          invoice.fiscalReference ? `Ref. Fiskale: ${invoice.fiscalReference}` : '',
+          invoice.customer?.name ?? '—',
+          invoice.customer?.fiscalNo  ? `Nr. Fiskal: ${invoice.customer.fiscalNo}`   : '',
+          invoice.customer?.vatNo     ? `Nr. TVSH: ${invoice.customer.vatNo}`         : '',
+          invoice.customer?.address   ? invoice.customer.address                      : '',
+          invoice.customer?.city      ? invoice.customer.city                         : '',
+          invoice.paymentMethod?.name ? `Pagesa: ${invoice.paymentMethod.name}`       : '',
         ].filter(Boolean),
       },
     );
@@ -375,16 +408,28 @@ export class PdfService {
   // SALES RETURN
   // ═══════════════════════════════════════════════════════════════════════════
   async generateSalesReturnPdf(ret: any): Promise<Buffer> {
+    const company = await this.getCompany();
     const doc = this.buildDoc();
 
-    let y = this.drawHeader(doc, 'KTHIM SHITJEJE', ret.docNo, ret.docDate, ret.status);
+    let y = this.drawHeader(doc, 'KTHIM SHITJEJE', ret.docNo, ret.docDate, ret.status, company.name);
 
     y = this.drawParty(doc, y,
-      { label: 'Klienti', entity: ret.customer ?? {} },
       {
-        label: 'Fatura Origjinale',
+        label: 'Shitësi',
+        entity: {
+          name:      company.name,
+          fiscalNo:  (company as any).fiscalNo,
+          vatNo:     (company as any).vatNo,
+          address:   (company as any).address,
+          city:      (company as any).city,
+        },
+      },
+      {
+        label: 'Klienti',
         lines: [
-          ret.salesInvoice?.docNo ?? '-',
+          ret.customer?.name ?? '—',
+          ret.customer?.fiscalNo ? `Nr. Fiskal: ${ret.customer.fiscalNo}` : '',
+          `Fatura: ${ret.salesInvoice?.docNo ?? '-'}`,
           ret.reason ? `Arsyeja: ${ret.reason}` : '',
         ].filter(Boolean),
       },

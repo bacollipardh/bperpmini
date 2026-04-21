@@ -19,6 +19,7 @@ import { PurchaseInvoicesModule } from './purchase-invoices/purchase-invoices.mo
 import { SalesInvoicesModule } from './sales-invoices/sales-invoices.module';
 import { SalesReturnsModule } from './sales-returns/sales-returns.module';
 import { PdfModule } from './pdf/pdf.module';
+import { CompanyProfileModule } from './company-profile/company-profile.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { PdfModule } from './pdf/pdf.module';
     SalesInvoicesModule,
     SalesReturnsModule,
     PdfModule,
+    CompanyProfileModule,
   ],
 })
 export class AppModule {}

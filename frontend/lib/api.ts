@@ -55,12 +55,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 }
 
 export const api = {
-  list: (endpoint: string) => apiFetch<any[]>(`/${endpoint}`),
-  get: (endpoint: string, id: string) => apiFetch<any>(`/${endpoint}/${id}`),
-  create: (endpoint: string, body: unknown) =>
-    apiFetch<any>(`/${endpoint}`, { method: 'POST', body: JSON.stringify(body) }),
-  update: (endpoint: string, id: string, body: unknown) =>
-    apiFetch<any>(`/${endpoint}/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  postDocument: (endpoint: string, id: string) =>
-    apiFetch<any>(`/${endpoint}/${id}/post`, { method: 'POST', body: JSON.stringify({}) }),
+  list:    (endpoint: string)                     => apiFetch<any[]>(`/${endpoint}`),
+  get:     (endpoint: string, id: string)         => apiFetch<any>(`/${endpoint}/${id}`),
+  getOne:  (endpoint: string)                     => apiFetch<any>(`/${endpoint}`),
+  create:  (endpoint: string, body: unknown)      => apiFetch<any>(`/${endpoint}`, { method: 'POST', body: JSON.stringify(body) }),
+  update:  (endpoint: string, id: string, body: unknown) => apiFetch<any>(`/${endpoint}/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  put:     (endpoint: string, body: unknown)      => apiFetch<any>(`/${endpoint}`, { method: 'PUT', body: JSON.stringify(body) }),
+  postDocument: (endpoint: string, id: string)    => apiFetch<any>(`/${endpoint}/${id}/post`, { method: 'POST', body: JSON.stringify({}) }),
 };
